@@ -1,0 +1,10 @@
+{
+	"@metadata": {
+		"authors": []
+	},
+	"spreadsheeteditor-desc": "Allows embedding and editing of excel-like spreadsheets",
+	"spreadsheeteditor-i18n-welcome": "Welcome to the localization file of the SpreadsheetEditor extension.",
+	"spreadsheeteditor-helloworld": "Hello world!",
+	"spreadsheeteditor-helloworld-intro": "Welcome to the \"Hello world\" special page of the SpreadsheetEditor extension.",
+	"helloworld": "Hello world"
+}

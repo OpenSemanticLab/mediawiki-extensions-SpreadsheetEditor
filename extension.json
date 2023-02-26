@@ -1,0 +1,54 @@
+{
+	"name": "SpreadsheetEditor",
+	"version": "0.1.0",
+	"author": [
+		"Simon Stier"
+	],
+	"url": "https://github.com/OpenSemanticLab/mediawiki-extensions-SpreadsheetEditor",
+	"descriptionmsg": "spreadsheeteditor-desc",
+	"license-name": "AGPL v3",
+	"type": "other",
+	"AutoloadClasses": {
+		"SpreadsheetEditorHooks": "SpreadsheetEditor.hooks.php",
+		"SpecialSpreadsheetEditor": "specials/SpecialSpreadsheetEditor.php"
+	},
+	"config": {
+		"SpreadsheetEditorEnableFoo": true
+	},
+	"ExtensionMessagesFiles": {
+		"SpreadsheetEditorAlias": "SpreadsheetEditor.i18n.alias.php",
+		"SpreadsheetEditorMagic": "SpreadsheetEditor.i18n.magic.php"
+	},
+	"Hooks": {
+		
+		"ParserFirstCallInit": [
+			"SpreadsheetEditorHooks::onParserFirstCallInit"
+		]
+	},
+	"MessagesDirs": {
+		"SpreadsheetEditor": [
+			"i18n"
+		]
+	},
+	"ResourceModules": {
+		"ext.SpreadsheetEditor.foo": {
+			"scripts": [
+				"modules/ext.SpreadsheetEditor.js",
+				"modules/ext.SpreadsheetEditor.foo.js"
+			],
+			"styles": [
+				"modules/ext.SpreadsheetEditor.foo.css"
+			],
+			"messages": [],
+			"dependencies": []
+		}
+	},
+	"ResourceFileModulePaths": {
+		"localBasePath": "",
+		"remoteExtPath": "SpreadsheetEditor"
+	},
+	"SpecialPages": {
+		"SpreadsheetEditor": "SpecialSpreadsheetEditor"
+	},
+	"manifest_version": 1
+}
