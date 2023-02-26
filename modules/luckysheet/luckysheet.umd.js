@@ -4162,3 +4162,5 @@ Ist der Wert FALSE, werden die aufgelaufenen Zinsen vom ersten Zinslaufdatum bis
  * http://adamwdraper.github.com/Numeral-js/
  */
 //# sourceMappingURL=luckysheet.umd.js.map
+
+window.luckysheet = luckysheet;
