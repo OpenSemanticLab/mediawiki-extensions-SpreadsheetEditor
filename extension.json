@@ -21,9 +21,8 @@
 	},
 	"Hooks": {
 		
-		"ParserFirstCallInit": [
-			"SpreadsheetEditorHooks::onParserFirstCallInit"
-		]
+		"ParserFirstCallInit": ["SpreadsheetEditorHooks::onParserFirstCallInit"],
+		"BeforePageDisplay": ["SpreadsheetEditorHooks::onBeforePageDisplay"]
 	},
 	"MessagesDirs": {
 		"SpreadsheetEditor": [
@@ -31,7 +30,7 @@
 		]
 	},
 	"ResourceModules": {
-		"ext.SpreadsheetEditor.foo": {
+		"ext.SpreadsheetEditor": {
 			"scripts": [
 				"modules/ext.SpreadsheetEditor.js",
 				"modules/ext.SpreadsheetEditor.foo.js"
