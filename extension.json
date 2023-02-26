@@ -30,6 +30,24 @@
 		]
 	},
 	"ResourceModules": {
+		"ext.SpreadsheetEditor.luckysheet": {
+			"scripts": [
+				"modules/luckysheet/luckysheet.umd.js",
+				"modules/luckysheet/plugins/js/plugin.js",
+				"modules/luckysheet/luckyexcel.umd.js"
+			],
+			"styles": [
+				"modules/luckysheet/plugins/css/pluginsCss.css",
+				"modules/luckysheet/plugins/plugins.css", 
+				"modules/luckysheet/css/luckysheet.css", 
+				"modules/luckysheet/assets/iconfont/iconfont.css" 
+			]
+		},
+		"ext.SpreadsheetEditor.utils": {
+			"scripts": [
+				"modules/utils/html2canvas.min.js"
+			]
+		},
 		"ext.SpreadsheetEditor": {
 			"scripts": [
 				"modules/ext.SpreadsheetEditor.js",

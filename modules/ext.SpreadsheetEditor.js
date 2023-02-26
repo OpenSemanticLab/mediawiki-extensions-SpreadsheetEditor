@@ -12,23 +12,13 @@
 }());
 
 $(document).ready(function () {
-	if ($('.SpreadsheetEditor').length === 0) return; //only on pages with a WellplateEditor-div
-	//const resource_path = "https://cdn.jsdelivr.net/npm/luckysheet@latest/";
-	const resource_path = "https://repolab.github.io/Luckysheet/";
-	mw.loader.load(resource_path + "dist/plugins/css/pluginsCss.css", 'text/css');
-	mw.loader.load(resource_path + "dist/plugins/plugins.css", 'text/css');
-	mw.loader.load(resource_path + "dist/css/luckysheet.css", 'text/css');
-	mw.loader.load(resource_path + "dist/assets/iconfont/iconfont.css", 'text/css');
+	if ($('.SpreadsheetEditor').length === 0) return; //only on pages with a SpreadsheetEditor-div
 	$.when(
-		$.getScript(resource_path + "dist/luckysheet.umd.js"),
-		$.getScript(resource_path + "dist/plugins/js/plugin.js"),
-		$.getScript(resource_path + "dist/luckyexcel.umd.js"),
-		//$.getScript( "https://gliffy.github.io/canvas2svg/canvas2svg.js" ),
-		$.getScript("https://html2canvas.hertzen.com/dist/html2canvas.min.js"),
 		mw.loader.using('oojs-ui-core'),
-		//mw.loader.using('ext.mwjson'),
 		mw.loader.using('ext.mwjson.util'),
 		mw.loader.using('ext.mwjson.api'),
+		mw.loader.using('ext.SpreadsheetEditor.luckysheet'),
+		mw.loader.using('ext.SpreadsheetEditor.utils'),
 		$.Deferred(function (deferred) {
 			$(deferred.resolve);
 		})
