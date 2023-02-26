@@ -167,10 +167,10 @@ $(document).ready(function () {
 			var pageObj = { exists: false, file: { exists: false, name: fileName } };
 			mwjson.api.getFilePage(fileName).then((page) => {
 				if (debug) console.log("File exists: " + page.exists);
-				if (page.exists && page.file.exists) {
+				pageObj = page;
 
+				if (page.exists && page.file.exists) {
 					file_exists = true;
-					pageObj = page;
 					pageObj.file.content = JSON.parse(pageObj.file.content);
 					$(`#${id_prefix}-img-box-${uid}`).append(element_img_html);
 					if (debug) console.log(page.file.content);
@@ -182,6 +182,7 @@ $(document).ready(function () {
 						}
 					}
 				}
+				else $(`#${id_prefix}-placeholder-${uid}`).show();
 			}, (error) => {
 				if (debug) console.log(error);
 				$(`#${id_prefix}-placeholder-${uid}`).show();
