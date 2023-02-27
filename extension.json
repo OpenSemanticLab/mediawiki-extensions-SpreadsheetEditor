@@ -1,6 +1,12 @@
 {
 	"name": "SpreadsheetEditor",
-	"version": "0.1.0",
+	"version": "0.2.0",
+	"requires": {
+		"MediaWiki": ">= 1.35",
+		"extensions": {
+			"MwJson": "*"
+		}
+	},
 	"author": [
 		"Simon Stier"
 	],
