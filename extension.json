@@ -1,10 +1,10 @@
 {
 	"name": "SpreadsheetEditor",
-	"version": "0.2.0",
+	"version": "0.3.0",
 	"requires": {
 		"MediaWiki": ">= 1.35",
 		"extensions": {
-			"MwJson": "*"
+			"MwJson": ">= 0.6.0"
 		}
 	},
 	"author": [

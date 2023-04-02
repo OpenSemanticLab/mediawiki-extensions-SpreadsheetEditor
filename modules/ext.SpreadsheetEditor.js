@@ -33,7 +33,8 @@ $(document).ready(function () {
 			console.log('ve.activationComplete in SpreadSheetEditor');
 			$('.ve-ui-surface').find('.SpreadsheetEditor').each(function () {
 				var $veElement = $(this);
-				const fileName = $veElement.text().split(';')[0];
+				const config = $veElement.data('config') ? $veElement.data('config') : {};
+				const fileName = config.file_title ? config.file_title : $veElement.text().split(';')[0];
 				if (debug) console.log("Found " + fileName);
 				var $element = $('.mw-parser-output').find(`div[data-filename="${fileName}"]`);
 				if ($element.length) {
@@ -115,8 +116,9 @@ $(document).ready(function () {
 		$('.SpreadsheetEditor').each(function () {
 			var $element = $(this);
 			if (visualEditor) console.log("Target VE");
-			const fileName = $element.text().split(';')[0];
-			const fileDisplayName = fileName.replace(".svg", "");
+			const config = $element.data('config') ? $element.data('config') : {};
+			const fileName = config.file_title ? config.file_title : $element.text().split(';')[0];
+			const fileDisplayName = config.file_label ? config.file_label : fileName.replace(".svg", "");
 			const filePageName = "File:" + fileName;
 			const filePage = "/wiki/" + filePageName;
 			const fileUrl = "/wiki/Special:Redirect/file/" + fileName;
@@ -271,7 +273,7 @@ $(document).ready(function () {
 					mwjson.api.updatePage(pageObj, summary = `Edited with ${id_prefix}`).then((page) => {
 						pageObj = page;
 						if (debug) console.log(pageObj.file.name + ' has sucessfully uploaded.');
-						mw.hook('spreadsheeteditor.file.uploaded').fire({ exists: file_exists, name: pageObj.file.name });
+						mw.hook('spreadsheeteditor.file.uploaded').fire({ exists: file_exists, name: pageObj.file.name, label: fileDisplayName });
 						file_exists = true;
 						close_button.setDisabled(false);
 					}, (error) => {
