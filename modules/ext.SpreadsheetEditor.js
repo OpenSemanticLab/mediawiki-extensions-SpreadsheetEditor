@@ -269,17 +269,28 @@ $(document).ready(function () {
 					pageObj.file.contentBlob = new Blob([JSON.stringify(pageObj.file.content)], {
 						type: 'application/json'
 					});
+					var ask_copy = false
+					/*if (pageObj.exists) {
+						if (pageObj.slots['jsondata']) {
+							if (mwjson.util.isString(pageObj.slots['jsondata'])) pageObj.slots['jsondata'] = JSON.parse(pageObj.slots['jsondata']);
+							for (const page_title of pageObj.slots['jsondata']) if (page_title === mw.config.get("wgPageName")) ask_copy = true;
+						}
+					}*/
+					if (ask_copy) {
 
-					mwjson.api.updatePage(pageObj, summary = `Edited with ${id_prefix}`).then((page) => {
-						pageObj = page;
-						if (debug) console.log(pageObj.file.name + ' has sucessfully uploaded.');
-						mw.hook('spreadsheeteditor.file.uploaded').fire({ exists: file_exists, name: pageObj.file.name, label: fileDisplayName });
-						file_exists = true;
-						close_button.setDisabled(false);
-					}, (error) => {
-						if (debug) console.log(error);
-						close_button.setDisabled(false);
-					});
+					}
+					else {
+						mwjson.api.updatePage(pageObj, summary = `Edited with ${id_prefix}`).then((page) => {
+							pageObj = page;
+							if (debug) console.log(pageObj.file.name + ' has sucessfully uploaded.');
+							mw.hook('spreadsheeteditor.file.uploaded').fire({ exists: file_exists, name: pageObj.file.name, label: fileDisplayName });
+							file_exists = true;
+							close_button.setDisabled(false);
+						}, (error) => {
+							if (debug) console.log(error);
+							close_button.setDisabled(false);
+						});
+					}
 				});
 			});
 
