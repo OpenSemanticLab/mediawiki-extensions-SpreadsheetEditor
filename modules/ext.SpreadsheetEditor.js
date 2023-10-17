@@ -120,8 +120,8 @@ $(document).ready(function () {
 			const fileName = config.file_title ? config.file_title : $element.text().split(';')[0];
 			const fileDisplayName = config.file_label ? config.file_label : fileName.replace(".svg", "");
 			const filePageName = "File:" + fileName;
-			const filePage = "/wiki/" + filePageName;
-			const fileUrl = "/wiki/Special:Redirect/file/" + fileName;
+			const filePage = mw.util.getUrl(filePageName);
+			const fileUrl = mw.util.getUrl("Special:Redirect/file/" + fileName);
 			var file_exists = false;
 			$element.text("");
 			$element.show();
