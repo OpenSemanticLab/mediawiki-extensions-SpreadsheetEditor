@@ -1,13 +1,13 @@
 /**
  * Univer Bundle for MediaWiki SpreadsheetEditor
  *
- * This file bundles all necessary Univer packages into a single UMD module
- * compatible with MediaWiki's ResourceLoader system.
+ * Bundles Univer + community Excel I/O library into a single UMD module
+ * compatible with MediaWiki's ResourceLoader.
  */
 
 // Core
-import { Univer, LocaleType, UniverInstanceType } from '@univerjs/core';
-import { defaultTheme } from '@univerjs/design';
+import { Univer, LocaleType, UniverInstanceType, merge } from '@univerjs/core';
+import { defaultTheme } from '@univerjs/themes';
 
 // Rendering & Formula Engine
 import { UniverDocsPlugin } from '@univerjs/docs';
@@ -19,13 +19,27 @@ import { UniverFormulaEnginePlugin } from '@univerjs/engine-formula';
 import { UniverSheetsPlugin } from '@univerjs/sheets';
 import { UniverSheetsUIPlugin } from '@univerjs/sheets-ui';
 import { UniverSheetsFormulaPlugin } from '@univerjs/sheets-formula';
+import { UniverSheetsFormulaUIPlugin } from '@univerjs/sheets-formula-ui';
 import { UniverSheetsNumfmtPlugin } from '@univerjs/sheets-numfmt';
+import { UniverSheetsNumfmtUIPlugin } from '@univerjs/sheets-numfmt-ui';
 
 // UI
 import { UniverUIPlugin } from '@univerjs/ui';
 
-// Facade for simplified API
-import { FUniver } from '@univerjs/facade';
+// Facade for simplified API (moved into @univerjs/core/facade in 0.6+)
+import { FUniver } from '@univerjs/core/facade';
+
+// Plugin facade extensions — side-effect imports that register
+// methods like getActiveWorkbook(), save(), etc. on the FUniver instance.
+import '@univerjs/sheets/facade';
+import '@univerjs/sheets-ui/facade';
+import '@univerjs/sheets-formula/facade';
+import '@univerjs/sheets-numfmt/facade';
+import '@univerjs/docs-ui/facade';
+import '@univerjs/ui/facade';
+
+// Excel/CSV import & export (ExcelJS-based, full format preservation)
+import LuckyExcel from '@mertdeveci55/univer-import-export';
 
 // Locale data - English
 import DesignEnUS from '@univerjs/design/locale/en-US';
@@ -35,16 +49,7 @@ import SheetsEnUS from '@univerjs/sheets/locale/en-US';
 import SheetsUIEnUS from '@univerjs/sheets-ui/locale/en-US';
 import SheetsFormulaEnUS from '@univerjs/sheets-formula/locale/en-US';
 
-// Locale data - German (where available)
-let DesignDeDE = {}, UIDeDE = {}, DocsUIDeDE = {}, SheetsDeDE = {}, SheetsUIDeDE = {}, SheetsFormulaDeDE = {};
-try { DesignDeDE = require('@univerjs/design/locale/de-DE'); } catch(e) {}
-try { UIDeDE = require('@univerjs/ui/locale/de-DE'); } catch(e) {}
-try { DocsUIDeDE = require('@univerjs/docs-ui/locale/de-DE'); } catch(e) {}
-try { SheetsDeDE = require('@univerjs/sheets/locale/de-DE'); } catch(e) {}
-try { SheetsUIDeDE = require('@univerjs/sheets-ui/locale/de-DE'); } catch(e) {}
-try { SheetsFormulaDeDE = require('@univerjs/sheets-formula/locale/de-DE'); } catch(e) {}
-
-// Merge locales for each language
+// Merge locale fragments into a single per-language bundle
 function deepMerge(...sources) {
 	const result = {};
 	for (const source of sources) {
@@ -69,19 +74,9 @@ const enUS = deepMerge(
 	SheetsFormulaEnUS
 );
 
-const deDE = deepMerge(
-	DesignDeDE,
-	UIDeDE,
-	DocsUIDeDE,
-	SheetsDeDE,
-	SheetsUIDeDE,
-	SheetsFormulaDeDE
-);
-
-// Locale registry
 const locales = {
 	[LocaleType.EN_US]: enUS,
-	[LocaleType.DE_DE]: Object.keys(deDE).length > 0 ? deDE : enUS  // Fallback to English
+	[LocaleType.DE_DE]: enUS  // Fallback to English until we wire up German fragments
 };
 
 // Export for UMD
@@ -92,6 +87,7 @@ export {
 	UniverInstanceType,
 	defaultTheme,
 	locales,
+	merge,
 
 	// Plugins
 	UniverDocsPlugin,
@@ -101,9 +97,14 @@ export {
 	UniverSheetsPlugin,
 	UniverSheetsUIPlugin,
 	UniverSheetsFormulaPlugin,
+	UniverSheetsFormulaUIPlugin,
 	UniverSheetsNumfmtPlugin,
+	UniverSheetsNumfmtUIPlugin,
 	UniverUIPlugin,
 
 	// Facade
-	FUniver
+	FUniver,
+
+	// Excel/CSV I/O
+	LuckyExcel
 };

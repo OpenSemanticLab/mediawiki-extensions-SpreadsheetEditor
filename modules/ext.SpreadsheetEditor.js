@@ -13,13 +13,14 @@
 
 $(document).ready(function () {
 	if ($('.SpreadsheetEditor').length === 0) return; //only on pages with a SpreadsheetEditor-div
+	// Note: the Univer bundle (window.UniverBundle) is loaded via a direct
+	// <script> tag from SpreadsheetEditor.hooks.php since it's ~12MB and
+	// breaks ResourceLoader's minifier. No mw.loader.using() for it.
 	$.when(
 		mw.loader.using('oojs-ui-core'),
 		mw.loader.using('ext.mwjson.util'),
 		mw.loader.using('ext.mwjson.api'),
-		mw.loader.using('ext.SpreadsheetEditor.univer'),
 		mw.loader.using('ext.SpreadsheetEditor.adapter'),
-		mw.loader.using('ext.SpreadsheetEditor.utils'),
 		$.Deferred(function (deferred) {
 			$(deferred.resolve);
 		})
@@ -262,10 +263,16 @@ $(document).ready(function () {
 			});
 
 			var upload_button = new OO.ui.ButtonWidget({
-				label: 'Import XSLX',
+				label: 'Import XLSX',
 				icon: 'upload'
 			});
 			$(`#${id_prefix}-buttons-${uid}`).append(upload_button.$element);
+
+			var export_button = new OO.ui.ButtonWidget({
+				label: 'Export XLSX',
+				icon: 'download'
+			});
+			$(`#${id_prefix}-buttons-${uid}`).append(export_button.$element);
 
 			var save_button = new OO.ui.ButtonWidget({
 				label: 'Save'
@@ -293,19 +300,9 @@ $(document).ready(function () {
 			var univerInstance = null;
 			var univerAPI = null;
 
-			$(`#${id_prefix}-edit-link-${uid}`).on('click', function () {
-				if (editorOpen) {
-					mw.notify('Another editor is currently open. \nPlease save your work and close it first.', { title: 'Warning', type: 'warning' });
-					return;
-				}
-				editorOpen = true;
-				console.log($element);
-				$element.css('resize', 'both');
-				$element.css('overflow', 'auto');
-				$(`#${id_prefix}-img-box-${uid}`).hide();
-				$(`#${id_prefix}-box-${uid}`).show();
-
-				// Initialize Univer with theme and locales
+			// Set up a fresh Univer instance and load the given workbook data.
+			// Used both for opening the editor and replacing the workbook after import.
+			function initializeUniver(workbookData) {
 				univerInstance = new UniverBundle.Univer({
 					theme: UniverBundle.defaultTheme,
 					locale: univerLocale,
@@ -323,12 +320,29 @@ $(document).ready(function () {
 				univerInstance.registerPlugin(UniverBundle.UniverSheetsPlugin);
 				univerInstance.registerPlugin(UniverBundle.UniverSheetsUIPlugin);
 				univerInstance.registerPlugin(UniverBundle.UniverSheetsFormulaPlugin);
+				univerInstance.registerPlugin(UniverBundle.UniverSheetsFormulaUIPlugin);
 				univerInstance.registerPlugin(UniverBundle.UniverSheetsNumfmtPlugin);
+				univerInstance.registerPlugin(UniverBundle.UniverSheetsNumfmtUIPlugin);
 
-				// Get Facade API
 				univerAPI = UniverBundle.FUniver.newAPI(univerInstance);
+				univerInstance.createUnit(UniverBundle.UniverInstanceType.UNIVER_SHEET, workbookData);
+			}
 
-				// Load data using DataAdapter
+			$(`#${id_prefix}-edit-link-${uid}`).on('click', function () {
+				if (editorOpen) {
+					mw.notify('Another editor is currently open. \nPlease save your work and close it first.', { title: 'Warning', type: 'warning' });
+					return;
+				}
+				editorOpen = true;
+				console.log($element);
+				$element.css('resize', 'both');
+				// overflow:hidden prevents the container from scrolling when
+				// the browser tries to scroll a focused input into view
+				// (which previously yanked the page to the top on any click).
+				$element.css('overflow', 'hidden');
+				$(`#${id_prefix}-img-box-${uid}`).hide();
+				$(`#${id_prefix}-box-${uid}`).show();
+
 				var workbookData;
 				if (file_exists && pageObj.file.content) {
 					workbookData = SpreadsheetEditor.DataAdapter.loadFromFile(pageObj.file.content);
@@ -336,8 +350,65 @@ $(document).ready(function () {
 					workbookData = SpreadsheetEditor.DataAdapter.createEmptyWorkbook();
 				}
 
-				// Create workbook
-				univerInstance.createUnit(UniverBundle.UniverInstanceType.UNIVER_SHEET, workbookData);
+				initializeUniver(workbookData);
+
+				const $editorBox = $(`#${id_prefix}-box-${uid}`);
+				const editorBoxEl = $editorBox.get(0);
+
+				// 1) Page-jump fix: Univer calls .focus() / scrollIntoView() on
+				// internal cell-editor inputs that live in a body-level portal.
+				// The browser's default behavior is to scroll the focused
+				// element into view, which yanks our document to the top
+				// (and key presses while editing yank it to the bottom).
+				//
+				// While the editor is open, lock the document scroll position
+				// any time a scroll happens we didn't initiate. We snapshot
+				// before user input events (pointerdown, keydown, focusin)
+				// and restore on the next frame.
+				let lockedScrollY = window.scrollY;
+				const lockScroll = function () { lockedScrollY = window.scrollY; };
+				const restoreScroll = function () {
+					requestAnimationFrame(function () {
+						if (window.scrollY !== lockedScrollY) {
+							window.scrollTo(window.scrollX, lockedScrollY);
+						}
+					});
+				};
+				const onUserInput = function () {
+					lockScroll();
+					restoreScroll();
+				};
+
+				editorBoxEl.addEventListener('pointerdown', onUserInput, true);
+				editorBoxEl.addEventListener('keydown', onUserInput, true);
+				document.addEventListener('focusin', function (e) {
+					// Only restore if focus moves to something inside or related
+					// to our editor (Univer's body-level portal elements).
+					if (editorBoxEl.contains(e.target) || /univer/i.test(e.target.className || '')) {
+						restoreScroll();
+					}
+				}, true);
+
+				// Also intercept hash/empty anchors inside the editor in case
+				// any Univer UI uses them (popups, menu items, etc.).
+				$editorBox.off('click.spreadsheetEditor').on('click.spreadsheetEditor', 'a', function (e) {
+					const href = $(this).attr('href');
+					if (!href || href === '#' || href.startsWith('javascript:')) {
+						e.preventDefault();
+					}
+				});
+
+				// 2) Wheel-scroll fix: preventDefault on wheel events targeting
+				// the editor so the wiki page never scrolls when the user is
+				// using the sheet. Univer's own wheel handlers fire alongside
+				// ours (different listeners get the event independently) so
+				// cell scrolling still works.
+				//
+				// Must be non-passive ({passive:false}) for preventDefault to
+				// take effect on wheel events.
+				editorBoxEl.addEventListener('wheel', function (e) {
+					e.preventDefault();
+				}, { passive: false });
 			});
 
 			new ResizeObserver(() => {
@@ -348,33 +419,73 @@ $(document).ready(function () {
 
 			var $upload = $(`#${id_prefix}-buttons-upload-${uid}`);
 			upload_button.on('click', function () {
-				// TODO: Implement Excel import using SheetJS (xlsx library)
-				mw.notify('Excel import will be available in a future update. For now, please create spreadsheets directly in the editor.', {
-					title: 'Feature Coming Soon',
-					type: 'info'
-				});
-				// $upload.click(); // Temporarily disabled
+				$upload.click(); // actual upload input is hidden so we simulate click
 			});
-			// Excel import will be implemented with SheetJS in a future update
-			/*$upload.on("change", function (evt) {
-				var files = evt.target.files;
-				if (files === null || files.length === 0) {
-					if (debug) console.log("No files wait for import");
+			$upload.on('change', function (evt) {
+				const files = evt.target.files;
+				if (!files || files.length === 0) return;
+
+				const file = files[0];
+				const suffix = file.name.split('.').pop().toLowerCase();
+				const isCsv = suffix === 'csv';
+				if (suffix !== 'xlsx' && suffix !== 'xls' && !isCsv) {
+					mw.notify('Unsupported file type. Please upload .xlsx, .xls or .csv', { type: 'warn' });
 					return;
 				}
 
-				let name = files[0].name;
-				if (debug) console.log("File upload: " + name);
-				let suffixArr = name.split("."), suffix = suffixArr[suffixArr.length - 1];
-				if (suffix != "xlsx") {
-					if (debug) console.log("Currently only supports the import of xlsx files");
-					return;
+				const onSuccess = function (univerData) {
+					try {
+						// Dispose existing Univer instance and create a new one with imported data
+						if (univerInstance) {
+							univerInstance.dispose();
+						}
+						initializeUniver(univerData);
+						mw.notify(`Imported ${file.name}`, { type: 'info' });
+					} catch (err) {
+						console.error('Univer recreate failed:', err);
+						mw.notify('Failed to load imported data: ' + err.message, { type: 'error' });
+					}
+				};
+
+				const onError = function (err) {
+					console.error('Excel import failed:', err);
+					mw.notify('Failed to import file: ' + (err.message || err), { type: 'error' });
+				};
+
+				if (isCsv) {
+					UniverBundle.LuckyExcel.transformCsvToUniver(file, onSuccess, onError);
+				} else {
+					UniverBundle.LuckyExcel.transformExcelToUniver(file, onSuccess, onError);
 				}
 
-				// TODO: Use SheetJS (xlsx) to read Excel file
-				// TODO: Convert to Univer format using DataAdapter.excelToUniver()
-				// TODO: Recreate Univer instance with new data
-			});*/
+				// Reset input so re-selecting the same file fires 'change'
+				$upload.val('');
+			});
+
+			export_button.on('click', function () {
+				try {
+					const activeWorkbook = univerAPI.getActiveWorkbook();
+					if (!activeWorkbook) {
+						mw.notify('No active workbook to export', { type: 'warn' });
+						return;
+					}
+					const snapshot = activeWorkbook.save();
+					const filename = (fileDisplayName || 'spreadsheet').replace(/\.(json|xlsx|xls)$/i, '') + '.xlsx';
+
+					UniverBundle.LuckyExcel.transformUniverToExcel({
+						snapshot: snapshot,
+						fileName: filename,
+						success: function () { /* file downloaded */ },
+						error: function (err) {
+							console.error('Excel export failed:', err);
+							mw.notify('Failed to export: ' + (err.message || err), { type: 'error' });
+						}
+					});
+				} catch (err) {
+					console.error('Excel export failed:', err);
+					mw.notify('Failed to export Excel file: ' + err.message, { type: 'error' });
+				}
+			});
 
 			save_button.on('click', function () {
 				close_button.setDisabled(true);

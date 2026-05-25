@@ -11,6 +11,10 @@ export default {
     file: 'modules/univer/univer.umd.js',
     format: 'umd',
     name: 'UniverBundle',
+    // /*@nomin*/ tells MediaWiki's ResourceLoader to skip its own minifier
+    // for this file. We already minify with terser; double-minifying corrupts
+    // some regex literals in the Univer/ExcelJS code.
+    banner: '/*@nomin*/',
     globals: {
       // No external dependencies - everything bundled
     },
@@ -34,8 +38,13 @@ export default {
     }),
     terser({
       compress: {
-        drop_console: false, // Keep console for debugging
+        drop_console: false,
         drop_debugger: true
+      },
+      format: {
+        // Preserve our /*@nomin*/ banner so MediaWiki ResourceLoader
+        // skips re-minifying this already-minified bundle.
+        comments: /@nomin/
       }
     })
   ]

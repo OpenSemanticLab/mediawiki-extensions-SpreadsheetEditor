@@ -36,25 +36,9 @@
 		]
 	},
 	"ResourceModules": {
-		"ext.SpreadsheetEditor.univer": {
-			"scripts": [
-				"modules/univer/univer.umd.js"
-			],
-			"styles": [
-				"modules/univer/univer.css"
-			]
-		},
 		"ext.SpreadsheetEditor.adapter": {
 			"scripts": [
 				"modules/ext.SpreadsheetEditor.adapter.js"
-			],
-			"dependencies": [
-				"ext.SpreadsheetEditor.univer"
-			]
-		},
-		"ext.SpreadsheetEditor.utils": {
-			"scripts": [
-				"modules/utils/html2canvas.min.js"
 			]
 		},
 		"ext.SpreadsheetEditor": {
@@ -66,9 +50,7 @@
 			],
 			"messages": [],
 			"dependencies": [
-				"ext.SpreadsheetEditor.univer",
 				"ext.SpreadsheetEditor.adapter",
-				"ext.SpreadsheetEditor.utils",
 				"ext.mwjson.api",
 				"ext.mwjson.util",
 				"oojs-ui-core"

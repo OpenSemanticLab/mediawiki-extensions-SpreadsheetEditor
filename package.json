@@ -10,17 +10,22 @@
     "test": "grunt test"
   },
   "dependencies": {
-    "@univerjs/core": "^0.2.0",
-    "@univerjs/design": "^0.2.0",
-    "@univerjs/docs": "^0.2.0",
-    "@univerjs/engine-formula": "^0.2.0",
-    "@univerjs/engine-render": "^0.2.0",
-    "@univerjs/facade": "^0.2.0",
-    "@univerjs/sheets": "^0.2.0",
-    "@univerjs/sheets-formula": "^0.2.0",
-    "@univerjs/sheets-numfmt": "^0.2.0",
-    "@univerjs/sheets-ui": "^0.2.0",
-    "@univerjs/ui": "^0.2.0"
+    "@univerjs/core": "^0.24.0",
+    "@univerjs/design": "^0.24.0",
+    "@univerjs/themes": "^0.24.0",
+    "@univerjs/docs": "^0.24.0",
+    "@univerjs/docs-ui": "^0.24.0",
+    "@univerjs/engine-formula": "^0.24.0",
+    "@univerjs/engine-render": "^0.24.0",
+    "@univerjs/sheets": "^0.24.0",
+    "@univerjs/sheets-formula": "^0.24.0",
+    "@univerjs/sheets-formula-ui": "^0.24.0",
+    "@univerjs/sheets-numfmt": "^0.24.0",
+    "@univerjs/sheets-numfmt-ui": "^0.24.0",
+    "@univerjs/sheets-ui": "^0.24.0",
+    "@univerjs/ui": "^0.24.0",
+    "@mertdeveci55/univer-import-export": "^0.2.1",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "devDependencies": {
     "@rollup/plugin-commonjs": "^25.0.7",

@@ -166,29 +166,9 @@
 			}
 		},
 
-		/**
-		 * Transform Excel data (from SheetJS) to Univer format
-		 * @param {Object} excelWorkbook - SheetJS workbook object
-		 * @returns {Object} Univer IWorkbookData
-		 */
-		excelToUniver: function (excelWorkbook) {
-			// TODO: Implement Excel → Univer transformation using SheetJS
-			// This will be needed once SheetJS is integrated
-			console.warn('Excel import not yet implemented');
-			return this.createEmptyWorkbook();
-		},
-
-		/**
-		 * Transform Univer data to Excel format (for SheetJS export)
-		 * @param {Object} univerData - Univer IWorkbookData
-		 * @returns {Object} SheetJS workbook object
-		 */
-		univerToExcel: function (univerData) {
-			// TODO: Implement Univer → Excel transformation for export
-			// This will be needed once SheetJS is integrated
-			console.warn('Excel export not yet implemented');
-			return null;
-		}
+		// Excel/CSV I/O is handled by UniverBundle.LuckyExcel (the
+		// @mertdeveci55/univer-import-export package). Call those directly
+		// from the editor's import/export button handlers.
 	};
 
 	// Export to global scope for use by other modules
