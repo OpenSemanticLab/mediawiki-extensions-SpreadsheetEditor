@@ -5,7 +5,9 @@
 /vendor
 /node_modules
 
-# Build artifacts
-/modules/univer/
+# Build artifacts (source files in modules/univer/ are tracked)
+/modules/univer/univer.umd.js
+/modules/univer/univer.umd.js.map
+/modules/univer/univer.css
 *.log
 npm-debug.log*

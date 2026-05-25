@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<title>SpreadsheetEditor</title>
+	<meta name="referrer" content="same-origin">
+	<style>
+		html, body {
+			margin: 0;
+			padding: 0;
+			width: 100%;
+			height: 100%;
+			overflow: hidden;
+			/* Stop wheel events from chaining up to the parent wiki page
+			 * when the sheet reaches its scroll edge (or when Univer
+			 * doesn't fully consume the wheel event). Without this,
+			 * scrolling inside the sheet also scrolls the parent. */
+			overscroll-behavior: contain;
+			overscroll-behavior-x: contain;
+			overscroll-behavior-y: contain;
+		}
+		#univer-app { width: 100%; height: 100%; }
+	</style>
+	<link rel="stylesheet" href="univer.css">
+</head>
+<body>
+	<div id="univer-app"></div>
+	<script src="univer.umd.js"></script>
+	<script src="iframe-host.js"></script>
+</body>
+</html>

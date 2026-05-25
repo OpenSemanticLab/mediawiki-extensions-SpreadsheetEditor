@@ -16,12 +16,22 @@ import { UniverRenderEnginePlugin } from '@univerjs/engine-render';
 import { UniverFormulaEnginePlugin } from '@univerjs/engine-formula';
 
 // Sheets
-import { UniverSheetsPlugin } from '@univerjs/sheets';
+import {
+	UniverSheetsPlugin,
+	SheetInterceptorService,
+	INTERCEPTOR_POINT,
+	BEFORE_CELL_EDIT,
+	AFTER_CELL_EDIT
+} from '@univerjs/sheets';
 import { UniverSheetsUIPlugin } from '@univerjs/sheets-ui';
 import { UniverSheetsFormulaPlugin } from '@univerjs/sheets-formula';
 import { UniverSheetsFormulaUIPlugin } from '@univerjs/sheets-formula-ui';
 import { UniverSheetsNumfmtPlugin } from '@univerjs/sheets-numfmt';
 import { UniverSheetsNumfmtUIPlugin } from '@univerjs/sheets-numfmt-ui';
+
+// Interceptor effect enum (used to scope which parts of rendering an
+// interceptor influences: Value, Style, or both).
+import { InterceptorEffectEnum } from '@univerjs/core';
 
 // UI
 import { UniverUIPlugin } from '@univerjs/ui';
@@ -48,6 +58,8 @@ import DocsUIEnUS from '@univerjs/docs-ui/locale/en-US';
 import SheetsEnUS from '@univerjs/sheets/locale/en-US';
 import SheetsUIEnUS from '@univerjs/sheets-ui/locale/en-US';
 import SheetsFormulaEnUS from '@univerjs/sheets-formula/locale/en-US';
+import SheetsFormulaUIEnUS from '@univerjs/sheets-formula-ui/locale/en-US';
+import SheetsNumfmtUIEnUS from '@univerjs/sheets-numfmt-ui/locale/en-US';
 
 // Merge locale fragments into a single per-language bundle
 function deepMerge(...sources) {
@@ -71,7 +83,9 @@ const enUS = deepMerge(
 	DocsUIEnUS,
 	SheetsEnUS,
 	SheetsUIEnUS,
-	SheetsFormulaEnUS
+	SheetsFormulaEnUS,
+	SheetsFormulaUIEnUS,
+	SheetsNumfmtUIEnUS
 );
 
 const locales = {
@@ -101,6 +115,13 @@ export {
 	UniverSheetsNumfmtPlugin,
 	UniverSheetsNumfmtUIPlugin,
 	UniverUIPlugin,
+
+	// Services / constants for cell-content interceptors
+	SheetInterceptorService,
+	INTERCEPTOR_POINT,
+	BEFORE_CELL_EDIT,
+	AFTER_CELL_EDIT,
+	InterceptorEffectEnum,
 
 	// Facade
 	FUniver,

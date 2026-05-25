@@ -10,9 +10,6 @@
 	border: 1px solid #ddd;
 	border-radius: 4px;
 	overflow: hidden;
-	/* overscroll-behavior stops wheel events from chaining up to the page
-	 * when the user scrolls past the edge of the sheet. */
-	overscroll-behavior: contain;
 }
 
 /* Univer container needs specific height */

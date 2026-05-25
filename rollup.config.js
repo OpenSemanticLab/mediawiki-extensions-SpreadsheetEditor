@@ -37,6 +37,11 @@ export default {
       minimize: true
     }),
     terser({
+      // Univer's DI container (redi) uses class identity for service tokens.
+      // Class .name is part of that identity in some code paths — strip it
+      // and `injector.get(SomeService)` fails with "Expect 1 dependency
+      // item(s) for id ''". keep_classnames preserves the original names.
+      keep_classnames: true,
       compress: {
         drop_console: false,
         drop_debugger: true
