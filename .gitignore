@@ -4,3 +4,8 @@
 /composer.lock
 /vendor
 /node_modules
+
+# Build artifacts
+/modules/univer/
+*.log
+npm-debug.log*

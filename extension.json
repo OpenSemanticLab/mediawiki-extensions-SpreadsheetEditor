@@ -1,6 +1,6 @@
 {
 	"name": "SpreadsheetEditor",
-	"version": "0.3.1",
+	"version": "2.0.0",
 	"requires": {
 		"MediaWiki": ">= 1.35",
 		"extensions": {
@@ -36,17 +36,20 @@
 		]
 	},
 	"ResourceModules": {
-		"ext.SpreadsheetEditor.luckysheet": {
+		"ext.SpreadsheetEditor.univer": {
 			"scripts": [
-				"modules/luckysheet/luckysheet.umd.js",
-				"modules/luckysheet/plugins/js/plugin.js",
-				"modules/luckysheet/luckyexcel.umd.js"
+				"modules/univer/univer.umd.js"
 			],
 			"styles": [
-				"modules/luckysheet/plugins/css/pluginsCss.css",
-				"modules/luckysheet/plugins/plugins.css", 
-				"modules/luckysheet/css/luckysheet.css", 
-				"modules/luckysheet/assets/iconfont/iconfont.css" 
+				"modules/univer/univer.css"
+			]
+		},
+		"ext.SpreadsheetEditor.adapter": {
+			"scripts": [
+				"modules/ext.SpreadsheetEditor.adapter.js"
+			],
+			"dependencies": [
+				"ext.SpreadsheetEditor.univer"
 			]
 		},
 		"ext.SpreadsheetEditor.utils": {
@@ -56,14 +59,20 @@
 		},
 		"ext.SpreadsheetEditor": {
 			"scripts": [
-				"modules/ext.SpreadsheetEditor.js",
-				"modules/ext.SpreadsheetEditor.foo.js"
+				"modules/ext.SpreadsheetEditor.js"
 			],
 			"styles": [
-				"modules/ext.SpreadsheetEditor.foo.css"
+				"modules/ext.SpreadsheetEditor.css"
 			],
 			"messages": [],
-			"dependencies": []
+			"dependencies": [
+				"ext.SpreadsheetEditor.univer",
+				"ext.SpreadsheetEditor.adapter",
+				"ext.SpreadsheetEditor.utils",
+				"ext.mwjson.api",
+				"ext.mwjson.util",
+				"oojs-ui-core"
+			]
 		}
 	},
 	"ResourceFileModulePaths": {
