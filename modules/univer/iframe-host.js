@@ -84,7 +84,24 @@
 	// In-memory label cache (uuid -> label). Filled by parent via
 	// 'labels-update' messages and read by the cell-content interceptor.
 	const labelCache = new Map();
-	const OSW_REGEX = /^(?:[A-Z][a-zA-Z]+:)?OSW[a-f0-9]{32}$/;
+	// Match cells whose value is a wiki page reference we can look up.
+	// Two shapes:
+	//   - bare or namespaced OSW UUID: OSW…  /  Item:OSW…  /  Category:OSW…
+	//   - human-named pages in OSL's known namespaces: Category:Item,
+	//     Property:HasLabel, Template:Foo, etc.
+	// We don't accept arbitrary "Foo:Bar" to avoid false positives like cell
+	// ranges or random text.
+	const OSW_REGEX = /^(?:(?:Category|Property|Item|Template|File|Help|User|Module|MediaWiki|Special):)?[A-Za-z0-9_\-]+$/;
+	function isOswId(value) {
+		if (typeof value !== 'string') return false;
+		// Quick reject: skip plain words / numbers / cell refs (must contain
+		// at least one of: a colon namespace OR the literal "OSW" prefix).
+		if (!/^OSW[a-f0-9]{32}$/.test(value)
+			&& !/^(Category|Property|Item|Template|File|Help|User|Module|MediaWiki|Special):/.test(value)) {
+			return false;
+		}
+		return OSW_REGEX.test(value);
+	}
 	const requestedLabels = new Set();
 	let labelsEnabled = true;  // Toggled via 'labels-enabled' from parent.
 
@@ -122,9 +139,12 @@
 	}
 
 	function init(workbookData, locale) {
+		// Univer's built-in LocaleType doesn't include DE_DE — for German we
+		// use our own string identifier (UB.DE_DE = 'deDE'), registered as a
+		// key in UB.locales. LocaleService just looks up by string.
 		const localeMap = {
 			'en': UB.LocaleType.EN_US,
-			'de': UB.LocaleType.DE_DE,
+			'de': UB.DE_DE,
 			'zh': UB.LocaleType.ZH_CN
 		};
 		const univerLocale = localeMap[locale] || UB.LocaleType.EN_US;
@@ -364,13 +384,483 @@
 
 	let currentLocale = 'en';
 
+	// Strings localized by the parent and pushed in on `init`. Filled with
+	// English defaults so the popup still works if init somehow omits them.
+	const popupMessages = {
+		popupSearch: 'Search',
+		popupNoMatches: 'No matches.',
+		popupHint: 'Type to search · press Enter to clear the cell · Esc to cancel'
+	};
+
+	// Autocompletion state
+	let autocompletions = [];
+	let currentPopup = null;
+	let queryCounter = 0;
+	const pendingQueries = new Map();
+	// Tracked separately from SelectionChanged so we can answer the parent's
+	// `get-selection` request even before any user interaction.
+	let lastSelection = null;  // { startRow, startColumn, endRow, endColumn }
+
+	function colToLetter(col) {
+		let s = '';
+		let n = col + 1;
+		while (n > 0) {
+			const r = (n - 1) % 26;
+			s = String.fromCharCode(65 + r) + s;
+			n = Math.floor((n - 1) / 26);
+		}
+		return s;
+	}
+
+	function selectionToA1(sel) {
+		if (!sel) return '';
+		const colA = colToLetter(sel.startColumn);
+		const rowA = sel.startRow + 1;
+		// Whole column? Univer reports endRow as the maximum possible row
+		// when the user picks a whole column header.
+		if (sel.endRow >= 1000000) {
+			const colB = colToLetter(sel.endColumn);
+			return colA + ':' + colB;
+		}
+		if (sel.endRow === sel.startRow && sel.endColumn === sel.startColumn) {
+			return colA + rowA;
+		}
+		return colA + rowA + ':' + colToLetter(sel.endColumn) + (sel.endRow + 1);
+	}
+
+	// Detect dark mode by inspecting the parent window's <html> class.
+	// Same-origin iframe -> we can read window.parent.document directly,
+	// which means the detection is always live (no stale init flag).
+	// Mirrors what OSL's darkmode.css keys off (`html.skin-citizen-dark`).
+	function detectDarkModeFromParent() {
+		try {
+			const phtml = window.parent.document.documentElement;
+			if (phtml.classList.contains('skin-citizen-dark')) return true;
+			if (phtml.getAttribute('data-bs-theme') === 'dark') return true;
+			if (phtml.classList.contains('theme-dark')) return true;
+			if (phtml.classList.contains('dark')) return true;
+			const pbody = window.parent.document.body;
+			if (pbody && pbody.classList.contains('dark')) return true;
+		} catch (e) { /* cross-origin / unavailable */ }
+		return false;
+	}
+
+	function applyDarkMode(on) {
+		if (on) {
+			document.documentElement.classList.add('se-dark');
+			document.body && document.body.classList.add('se-dark');
+		} else {
+			document.documentElement.classList.remove('se-dark');
+			document.body && document.body.classList.remove('se-dark');
+		}
+	}
+
+	// Parse an A1-style range like "B:B" or "B2:B100" into a bounding box.
+	// Returns { sStart, cStart, rEnd, cEnd } in 0-indexed coords, with
+	// Infinity meaning "unbounded".
+	function parseRange(range) {
+		const m = (range || '').toUpperCase().match(/^([A-Z]+)(\d*):([A-Z]+)(\d*)$/);
+		if (!m) return null;
+		const colToIdx = function (c) {
+			let n = 0;
+			for (let i = 0; i < c.length; i++) n = n * 26 + (c.charCodeAt(i) - 64);
+			return n - 1;
+		};
+		return {
+			rStart: m[2] ? parseInt(m[2], 10) - 1 : 0,
+			cStart: colToIdx(m[1]),
+			rEnd: m[4] ? parseInt(m[4], 10) - 1 : Infinity,
+			cEnd: colToIdx(m[3])
+		};
+	}
+
+	function findAutocompletionFor(sheetId, row, col) {
+		for (const cfg of autocompletions) {
+			if (cfg.sheetId && cfg.sheetId !== sheetId) continue;
+			const r = parseRange(cfg.range);
+			if (!r) continue;
+			if (row >= r.rStart && row <= r.rEnd && col >= r.cStart && col <= r.cEnd) {
+				return cfg;
+			}
+		}
+		return null;
+	}
+
+	function closePopup() {
+		if (currentPopup) {
+			currentPopup.remove();
+			currentPopup = null;
+		}
+	}
+
+	function ensurePopupStyles() {
+		if (document.getElementById('se-ac-styles')) return;
+		const s = document.createElement('style');
+		s.id = 'se-ac-styles';
+		s.textContent = `
+			.se-ac-popup { position: absolute; z-index: 10000; background: #fff;
+				border: 1px solid #b8b8b8; box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+				border-radius: 4px; min-width: 280px; max-width: 480px;
+				font-family: sans-serif; font-size: 13px; }
+			.se-ac-popup-header { padding: 6px 10px; border-bottom: 1px solid #eee;
+				background: #fafafa; }
+			.se-ac-popup-header input { width: 100%; box-sizing: border-box;
+				padding: 4px 6px; border: 1px solid #ccc; border-radius: 3px;
+				background: #fff; color: #222; }
+			.se-ac-popup-list { max-height: 280px; overflow-y: auto; }
+			.se-ac-popup-row { padding: 8px 10px; border-bottom: 1px solid #f0f0f0;
+				cursor: pointer; }
+			.se-ac-popup-row:hover, .se-ac-popup-row.selected { background: #eef4ff; }
+			.se-ac-popup-row b { display: block; color: #1c5aa6; }
+			.se-ac-popup-row .desc { color: #555; font-size: 12px; }
+			.se-ac-popup-row .type { color: #888; font-size: 11px; font-style: italic; }
+			.se-ac-popup-empty { padding: 10px; color: #888; font-style: italic; }
+
+			html.se-dark .se-ac-popup, body.se-dark .se-ac-popup {
+				background: #1f1f1f; color: #e8e8e8; border-color: #444;
+				box-shadow: 0 4px 16px rgba(0,0,0,0.6); }
+			html.se-dark .se-ac-popup-header, body.se-dark .se-ac-popup-header {
+				background: #2a2a2a; border-color: #3a3a3a; }
+			html.se-dark .se-ac-popup-header input, body.se-dark .se-ac-popup-header input {
+				background: #2a2a2a; color: #eee; border-color: #555; }
+			html.se-dark .se-ac-popup-row, body.se-dark .se-ac-popup-row {
+				border-color: #2a2a2a; }
+			html.se-dark .se-ac-popup-row:hover, body.se-dark .se-ac-popup-row:hover,
+			html.se-dark .se-ac-popup-row.selected, body.se-dark .se-ac-popup-row.selected {
+				background: #2d4a6f; }
+			html.se-dark .se-ac-popup-row b, body.se-dark .se-ac-popup-row b {
+				color: #6ab0f3; }
+			html.se-dark .se-ac-popup-row .desc, body.se-dark .se-ac-popup-row .desc {
+				color: #bbb; }
+			html.se-dark .se-ac-popup-empty, body.se-dark .se-ac-popup-empty {
+				color: #888; }
+		`;
+		document.head.appendChild(s);
+	}
+
+	function writeCellValue(row, col, value) {
+		try {
+			const wb = univerAPI && univerAPI.getActiveWorkbook();
+			const sh = wb && wb.getActiveSheet();
+			if (sh) {
+				sh.getRange(row, col).setValue(value);
+			}
+		} catch (e) {
+			console.warn('writeCellValue failed:', e);
+		}
+	}
+
+	function requestQuery(queryTemplate, userInput) {
+		queryCounter++;
+		const queryId = 'q' + queryCounter;
+		return new Promise(function (resolve) {
+			pendingQueries.set(queryId, resolve);
+			send({ type: 'autocomplete-query', queryId: queryId, queryTemplate: queryTemplate, userInput: userInput });
+		});
+	}
+
+	function openPopupForCell(cfg, cellRow, cellCol, anchorEl) {
+		closePopup();
+		ensurePopupStyles();
+		// Re-check parent dark mode every time the popup opens so theme
+		// toggles between editor sessions are picked up correctly.
+		applyDarkMode(detectDarkModeFromParent());
+
+		const popup = document.createElement('div');
+		popup.className = 'se-ac-popup';
+		const placeholder = (cfg.label || popupMessages.popupSearch) + '…';
+		popup.innerHTML = `
+			<div class="se-ac-popup-header">
+				<input type="text" />
+			</div>
+			<div class="se-ac-popup-list"></div>
+		`;
+		popup.querySelector('input').placeholder = placeholder;
+		document.body.appendChild(popup);
+		currentPopup = popup;
+
+		// Position the popup directly under the active cell. Univer exposes
+		// the cell's pixel rect via fRange.getCellRect(); fall back to a
+		// fixed corner if the API isn't available or returns invalid coords.
+		let positioned = false;
+		try {
+			const wb = univerAPI && univerAPI.getActiveWorkbook();
+			const sh = wb && wb.getActiveSheet();
+			if (sh) {
+				const rect = sh.getRange(cellRow, cellCol).getCellRect();
+				if (rect && rect.width > 0) {
+					// Place under the cell by default. If that would overflow
+					// the viewport bottom, flip above the cell instead.
+					const popupH = 280;  // rough estimate; the list is scrollable
+					const popupW = 320;
+					let top = rect.bottom + 2;
+					if (top + popupH > window.innerHeight && rect.top - popupH - 2 > 0) {
+						top = rect.top - popupH - 2;
+					}
+					let left = rect.left;
+					if (left + popupW > window.innerWidth) {
+						left = Math.max(0, window.innerWidth - popupW - 4);
+					}
+					popup.style.top = top + 'px';
+					popup.style.left = left + 'px';
+					positioned = true;
+				}
+			}
+		} catch (e) { /* fall through to default position */ }
+		if (!positioned) {
+			popup.style.top = '60px';
+			popup.style.left = '20px';
+		}
+
+		const input = popup.querySelector('input');
+		const list = popup.querySelector('.se-ac-popup-list');
+		let debounceTimer = null;
+		let fireSeq = 0;
+		let lastSeq = 0;
+		let selectedIdx = -1;
+		let currentRows = [];
+
+		function escapeHtml(s) {
+			return String(s).replace(/[&<>"']/g, c => ({
+				'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+			}[c]));
+		}
+
+		function render(rows) {
+			list.innerHTML = '';
+			selectedIdx = -1;
+			if (!rows.length) {
+				// Empty-state copy is different depending on whether the user
+				// has typed: empty input + Enter is the "clear cell" gesture,
+				// so we hint at that. Strings are localized by the parent.
+				const text = input.value === '' ? popupMessages.popupHint : popupMessages.popupNoMatches;
+				const div = document.createElement('div');
+				div.className = 'se-ac-popup-empty';
+				div.textContent = text;
+				list.appendChild(div);
+				return;
+			}
+			rows.forEach(function (resultRow, idx) {
+				const item = document.createElement('div');
+				item.className = 'se-ac-popup-row';
+				item.dataset.idx = idx;
+				const desc = resultRow.description
+					? `<div class="desc">${escapeHtml(resultRow.description.substring(0, 140))}${resultRow.description.length > 140 ? '…' : ''}</div>`
+					: '';
+				const type = resultRow.type ? `<div class="type">${escapeHtml(resultRow.type)}</div>` : '';
+				item.innerHTML = `<b>${escapeHtml(resultRow.label || resultRow.displaytitle)}</b>${desc}${type}`;
+				item.addEventListener('mousedown', function (e) {
+					e.preventDefault();
+					commit(resultRow);
+				});
+				list.appendChild(item);
+			});
+		}
+
+		function fire(userInput) {
+			if (debounceTimer) clearTimeout(debounceTimer);
+			debounceTimer = setTimeout(function () {
+				const mySeq = ++fireSeq;
+				lastSeq = mySeq;
+				// Resolve {{{cell:X}}} / {{{col:X}}} refs against the workbook
+				// BEFORE shipping the query off to the parent. The parent only
+				// substitutes {{{user_input}}}, it can't see other cells.
+				const resolved = substituteCellRefs(cfg.queryTemplate, cellRow);
+				requestQuery(resolved, userInput).then(function (rows) {
+					if (lastSeq !== mySeq) return;
+					currentRows = rows;
+					render(rows);
+				});
+			}, 150);
+		}
+
+		function commit(resultRow) {
+			writeCellValue(cellRow, cellCol, resultRow.uuid);
+			closePopup();
+		}
+
+		// If the cell already holds a UUID we have a label for, pre-fill the
+		// input with that label so the user starts from where they were.
+		const currentValue = readCellRaw(cellRow, cellCol);
+		let initialInput = '';
+		if (currentValue && OSW_REGEX.test(currentValue)) {
+			initialInput = labelCache.get(currentValue) || currentValue;
+		} else if (currentValue) {
+			initialInput = currentValue;
+		}
+		input.value = initialInput;
+
+		input.addEventListener('input', function () { fire(input.value); });
+		input.addEventListener('keydown', function (e) {
+			if (e.key === 'Escape') { closePopup(); return; }
+			if (e.key === 'ArrowDown') {
+				e.preventDefault();
+				selectedIdx = Math.min(currentRows.length - 1, selectedIdx + 1);
+				updateSelection();
+			} else if (e.key === 'ArrowUp') {
+				e.preventDefault();
+				selectedIdx = Math.max(0, selectedIdx - 1);
+				updateSelection();
+			} else if (e.key === 'Enter') {
+				e.preventDefault();
+				// Empty input + Enter clears the cell. Otherwise commit
+				// the highlighted result if there is one.
+				if (input.value === '') {
+					writeCellValue(cellRow, cellCol, '');
+					closePopup();
+				} else if (selectedIdx >= 0 && currentRows[selectedIdx]) {
+					commit(currentRows[selectedIdx]);
+				}
+			}
+		});
+		function updateSelection() {
+			const items = list.querySelectorAll('.se-ac-popup-row');
+			items.forEach(function (el, idx) {
+				el.classList.toggle('selected', idx === selectedIdx);
+				if (idx === selectedIdx) el.scrollIntoView({ block: 'nearest' });
+			});
+		}
+
+		// Close on click outside the popup.
+		setTimeout(function () {
+			const onDocClick = function (e) {
+				if (!popup.contains(e.target)) {
+					closePopup();
+					document.removeEventListener('mousedown', onDocClick, true);
+				}
+			};
+			document.addEventListener('mousedown', onDocClick, true);
+		}, 0);
+
+		input.focus();
+		input.select();  // pre-select so the user can just type to replace
+		fire(input.value);  // initial query uses current label / value if any
+	}
+
+	let selectionListenerInstalled = false;
+	function setupAutocompletionListener() {
+		if (!univerAPI || selectionListenerInstalled) return;
+		try {
+			// Listen for selection changes; if the new active cell falls
+			// inside an autocompletion range, open the popup.
+			// Univer's ISelectionEventParams: { selections: IRange[] } where
+			// each IRange has startRow / endRow / startColumn / endColumn.
+			univerAPI.addEvent(univerAPI.Event.SelectionChanged, function (params) {
+				const range = params && params.selections && params.selections[0];
+				if (!range) return;
+				// Stash the latest selection so the parent can ask for it
+				// later (e.g. to pre-fill the config dialog's Range field).
+				lastSelection = range;
+				if (currentPopup) return;  // popup already open for this cell
+				try {
+					const wb = univerAPI.getActiveWorkbook();
+					const sh = wb && wb.getActiveSheet();
+					if (!sh) return;
+					const sheetId = sh.getSheetId ? sh.getSheetId() : null;
+					const row = range.startRow;
+					const col = range.startColumn;
+					// Only fire on single-cell selection — not while the user
+					// is dragging out a range.
+					if (range.endRow !== row || range.endColumn !== col) return;
+					const cfg = findAutocompletionFor(sheetId, row, col);
+					if (cfg) {
+						// Anchor element refinement (to position popup at the
+						// cell's screen rect) is a follow-up; for now the
+						// popup falls back to a fixed offset in the iframe.
+						openPopupForCell(cfg, row, col, null);
+					}
+				} catch (e) { /* ignore */ }
+			});
+			selectionListenerInstalled = true;
+		} catch (e) {
+			console.warn('Could not register selection listener for autocompletion:', e);
+		}
+	}
+
+	// Read a cell's RAW value, bypassing the cell-content interceptor that
+	// rewrites UUIDs to labels. The facade's getRange().getValue() goes
+	// through interceptors — for cell-reference substitution in queries we
+	// need the original stored value (the UUID), not the displayed label.
+	function readCellRaw(row, col) {
+		try {
+			const wb = univerAPI && univerAPI.getActiveWorkbook();
+			const fSheet = wb && wb.getActiveSheet();
+			// _worksheet is the internal Worksheet object exposing getCellRaw,
+			// which reads the underlying snapshot without the interceptor.
+			const ws = fSheet && fSheet._worksheet;
+			if (ws && typeof ws.getCellRaw === 'function') {
+				const cell = ws.getCellRaw(row, col);
+				if (cell && cell.v != null) return String(cell.v);
+				return '';
+			}
+			// Fallback for older facade shapes — still goes through the
+			// interceptor but better than nothing.
+			if (fSheet) {
+				const v = fSheet.getRange(row, col).getValue();
+				return v == null ? '' : String(v);
+			}
+		} catch (e) { /* ignore */ }
+		return '';
+	}
+
+	// Substitute {{{cell:A1}}} and {{{col:A}}} placeholders in a query template
+	// with values read from the workbook. `currentRow` is the row of the cell
+	// the popup is editing (used for {{{col:X}}} same-row references).
+	function substituteCellRefs(template, currentRow) {
+		return template
+			.replace(/\{\{\{cell:([A-Z]+)(\d+)\}\}\}/g, function (_, col, row) {
+				let n = 0;
+				for (let i = 0; i < col.length; i++) n = n * 26 + (col.charCodeAt(i) - 64);
+				return readCellRaw(parseInt(row, 10) - 1, n - 1);
+			})
+			.replace(/\{\{\{col:([A-Z]+)\}\}\}/g, function (_, col) {
+				let n = 0;
+				for (let i = 0; i < col.length; i++) n = n * 26 + (col.charCodeAt(i) - 64);
+				return readCellRaw(currentRow, n - 1);
+			});
+	}
+
 	window.addEventListener('message', function (event) {
 		const msg = event.data;
 		if (!msg || typeof msg !== 'object') return;
 		switch (msg.type) {
 			case 'init':
 				currentLocale = msg.locale || 'en';
+				applyDarkMode(!!msg.darkMode);
+				if (msg.messages) Object.assign(popupMessages, msg.messages);
 				init(msg.workbookData, currentLocale);
+				break;
+			case 'set-dark-mode':
+				applyDarkMode(!!msg.darkMode);
+				break;
+			case 'get-selection':
+				// Parent wants the current A1 selection (e.g. to pre-fill
+				// the autocompletion config dialog's Range field).
+				send({ type: 'selection-response', range: selectionToA1(lastSelection) });
+				break;
+			case 'apply-default-value':
+				// Fill every empty cell in `range` with `value`. Used when the
+				// user adds an autocompletion config with a default selected.
+				try {
+					const r = parseRange(msg.range);
+					if (r) {
+						const wb = univerAPI && univerAPI.getActiveWorkbook();
+						const sh = wb && wb.getActiveSheet();
+						if (sh) {
+							const maxRow = (r.rEnd === Infinity) ? Math.min(999, sh.getMaxRows() - 1) : r.rEnd;
+							for (let row = r.rStart; row <= maxRow; row++) {
+								for (let col = r.cStart; col <= r.cEnd; col++) {
+									const current = sh.getRange(row, col).getValue();
+									if (current == null || current === '') {
+										sh.getRange(row, col).setValue(msg.value);
+									}
+								}
+							}
+						}
+					}
+				} catch (e) {
+					console.warn('apply-default-value failed:', e);
+				}
 				break;
 			case 'save-request':
 				handleSaveRequest();
@@ -395,6 +885,19 @@
 			case 'labels-enabled':
 				labelsEnabled = !!msg.enabled;
 				refreshSheet();
+				break;
+			case 'set-autocompletions':
+				autocompletions = Array.isArray(msg.configs) ? msg.configs : [];
+				// (Re)attach the selection listener — safe to call multiple
+				// times since Univer dedupes listener registration internally.
+				setupAutocompletionListener();
+				break;
+			case 'autocomplete-results':
+				const resolve = pendingQueries.get(msg.queryId);
+				if (resolve) {
+					pendingQueries.delete(msg.queryId);
+					resolve(Array.isArray(msg.rows) ? msg.rows : []);
+				}
 				break;
 		}
 	});

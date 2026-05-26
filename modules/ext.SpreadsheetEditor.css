@@ -12,6 +12,220 @@
 	overflow: hidden;
 }
 
+/* Autocompletion configuration dialog */
+.spreadsheet-editor-ac-overlay {
+	position: fixed;
+	inset: 0;
+	background: rgba(0, 0, 0, 0.5);
+	z-index: 10000;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.spreadsheet-editor-ac-dialog {
+	background: #fff;
+	color: #222;
+	border-radius: 6px;
+	box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+	width: min(640px, 90vw);
+	max-height: 85vh;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+	/* keep wheel events inside the dialog */
+	overscroll-behavior: contain;
+}
+
+.spreadsheet-editor-ac-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 12px 16px;
+	border-bottom: 1px solid #e0e0e0;
+	background: #fafafa;
+}
+
+.spreadsheet-editor-ac-header h3 {
+	margin: 0;
+	font-size: 16px;
+}
+
+.spreadsheet-editor-ac-close-x {
+	background: transparent;
+	border: 0;
+	font-size: 22px;
+	line-height: 1;
+	cursor: pointer;
+	color: #666;
+	padding: 0 6px;
+}
+
+.spreadsheet-editor-ac-close-x:hover {
+	color: #111;
+}
+
+.spreadsheet-editor-ac-list,
+.spreadsheet-editor-ac-form {
+	padding: 12px 16px;
+	overflow-y: auto;
+	overscroll-behavior: contain;
+}
+
+.spreadsheet-editor-ac-list {
+	max-height: 30vh;
+}
+
+.spreadsheet-editor-ac-item {
+	border: 1px solid #e0e0e0;
+	border-radius: 4px;
+	padding: 8px 10px;
+	margin-bottom: 8px;
+	background: #f9f9f9;
+	position: relative;
+}
+
+.spreadsheet-editor-ac-item code {
+	background: #eee;
+	padding: 1px 6px;
+	border-radius: 3px;
+	font-size: 12px;
+}
+
+.spreadsheet-editor-ac-query {
+	font-family: monospace;
+	font-size: 11px;
+	color: #555;
+	margin: 4px 0;
+	word-break: break-all;
+}
+
+.spreadsheet-editor-ac-del {
+	position: absolute;
+	top: 6px;
+	right: 6px;
+	background: transparent;
+	border: 1px solid #ccc;
+	border-radius: 3px;
+	padding: 2px 8px;
+	cursor: pointer;
+	font-size: 11px;
+}
+
+.spreadsheet-editor-ac-del:hover {
+	background: #f44336;
+	color: #fff;
+	border-color: #f44336;
+}
+
+.spreadsheet-editor-ac-form label {
+	display: block;
+	margin-top: 10px;
+	margin-bottom: 4px;
+	font-weight: 600;
+	font-size: 13px;
+}
+
+.spreadsheet-editor-ac-form .hint {
+	font-size: 12px;
+	color: #666;
+	margin: 8px 0 12px;
+}
+
+.spreadsheet-editor-ac-form .hint code {
+	background: #f0f0f0;
+	padding: 1px 4px;
+	border-radius: 2px;
+}
+
+.spreadsheet-editor-ac-footer {
+	padding: 10px 16px;
+	border-top: 1px solid #e0e0e0;
+	text-align: right;
+	background: #fafafa;
+}
+
+/* Category quick-pick / default-value inputs in the config dialog */
+.spreadsheet-editor-ac-form input.spreadsheet-editor-ac-category,
+.spreadsheet-editor-ac-form input.spreadsheet-editor-ac-default {
+	width: 100%;
+	box-sizing: border-box;
+	padding: 6px 8px;
+	border: 1px solid #ccc;
+	border-radius: 3px;
+	font-size: 13px;
+}
+
+/* Inline autocomplete dropdown anchored under the category / default inputs.
+ * overscroll-behavior:contain keeps wheel events from chaining to the page
+ * when the dropdown list has scrollable content. */
+.spreadsheet-editor-ac-inline-drop {
+	background: #fff;
+	border: 1px solid #b8b8b8;
+	border-radius: 0 0 4px 4px;
+	max-height: 240px;
+	overflow-y: auto;
+	overscroll-behavior: contain;
+	font-size: 13px;
+	z-index: 10001;
+	box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+}
+
+.spreadsheet-editor-ac-inline-drop .row {
+	padding: 6px 10px;
+	cursor: pointer;
+	border-bottom: 1px solid #f0f0f0;
+}
+
+.spreadsheet-editor-ac-inline-drop .row:hover { background: #eef4ff; }
+.spreadsheet-editor-ac-inline-drop .row b { display: block; color: #1c5aa6; }
+.spreadsheet-editor-ac-inline-drop .row i { color: #888; font-size: 11px; font-style: italic; }
+.spreadsheet-editor-ac-inline-drop .empty { padding: 8px 10px; color: #888; }
+
+.spreadsheet-editor-ac-inline-drop.dark {
+	background: #1f1f1f;
+	color: #e8e8e8;
+	border-color: #444;
+	box-shadow: 0 6px 16px rgba(0, 0, 0, 0.6);
+}
+.spreadsheet-editor-ac-inline-drop.dark .row { border-color: #2a2a2a; }
+.spreadsheet-editor-ac-inline-drop.dark .row:hover { background: #2d4a6f; }
+.spreadsheet-editor-ac-inline-drop.dark .row b { color: #6ab0f3; }
+.spreadsheet-editor-ac-inline-drop.dark .row i,
+.spreadsheet-editor-ac-inline-drop.dark .empty { color: #888; }
+
+/* Dark mode variant for the configuration dialog */
+.spreadsheet-editor-ac-dialog.dark {
+	background: #1f1f1f;
+	color: #e8e8e8;
+}
+.spreadsheet-editor-ac-dialog.dark .spreadsheet-editor-ac-header,
+.spreadsheet-editor-ac-dialog.dark .spreadsheet-editor-ac-footer {
+	background: #2a2a2a;
+	border-color: #3a3a3a;
+}
+.spreadsheet-editor-ac-dialog.dark .spreadsheet-editor-ac-item {
+	background: #2a2a2a;
+	border-color: #3a3a3a;
+}
+.spreadsheet-editor-ac-dialog.dark .spreadsheet-editor-ac-item code,
+.spreadsheet-editor-ac-dialog.dark .spreadsheet-editor-ac-form .hint code {
+	background: #444;
+	color: #eee;
+}
+.spreadsheet-editor-ac-dialog.dark .spreadsheet-editor-ac-form input[type=text],
+.spreadsheet-editor-ac-dialog.dark .spreadsheet-editor-ac-form textarea {
+	background: #2a2a2a;
+	color: #eee;
+	border-color: #4a4a4a;
+}
+.spreadsheet-editor-ac-dialog.dark .spreadsheet-editor-ac-query,
+.spreadsheet-editor-ac-dialog.dark .spreadsheet-editor-ac-form .hint {
+	color: #bbb;
+}
+.spreadsheet-editor-ac-dialog.dark .spreadsheet-editor-ac-close-x { color: #ccc; }
+.spreadsheet-editor-ac-dialog.dark .spreadsheet-editor-ac-close-x:hover { color: #fff; }
+
 /* Univer container needs specific height */
 .univer-container {
 	width: 100%;

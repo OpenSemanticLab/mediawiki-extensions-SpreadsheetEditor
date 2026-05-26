@@ -1,0 +1,46 @@
+{
+	"@metadata": {
+		"authors": []
+	},
+	"spreadsheeteditor-desc": "Erlaubt das Einbetten und Bearbeiten von Excel-ähnlichen Tabellen",
+
+	"spreadsheeteditor-button-edit": "Bearbeiten",
+	"spreadsheeteditor-button-show-labels": "Bezeichnungen anzeigen",
+	"spreadsheeteditor-button-autocompletion": "Autovervollständigung",
+	"spreadsheeteditor-button-import-xlsx": "XLSX importieren",
+	"spreadsheeteditor-button-export-xlsx": "XLSX exportieren",
+	"spreadsheeteditor-button-save": "Speichern",
+	"spreadsheeteditor-button-close": "Schließen",
+
+	"spreadsheeteditor-ac-title": "Autovervollständigung",
+	"spreadsheeteditor-ac-empty-list": "Keine Autovervollständigungen konfiguriert.",
+	"spreadsheeteditor-ac-range": "Bereich",
+	"spreadsheeteditor-ac-range-placeholder": "z. B. B:B oder B2:B100",
+	"spreadsheeteditor-ac-label": "Bezeichnung (optional)",
+	"spreadsheeteditor-ac-label-placeholder": "Kurzer Name für die Kopfzeile des Popups",
+	"spreadsheeteditor-ac-category": "Kategorie-Schnellauswahl (optional)",
+	"spreadsheeteditor-ac-category-placeholder": "Kategorie auswählen (z. B. Item, Partner)…",
+	"spreadsheeteditor-ac-category-hint": "Eine Kategorie auswählen füllt die Abfragevorlage unten automatisch aus.",
+	"spreadsheeteditor-ac-query": "SMW-Abfragevorlage",
+	"spreadsheeteditor-ac-query-hint": "Platzhalter: <code>{{{user_input}}}</code> = Eingabe des Nutzers · <code>{{{cell:A1}}}</code> = Wert von A1 (absolut) · <code>{{{col:A}}}</code> = Wert von Spalte A in derselben Zeile. UUIDs der Ergebnis-Seiten werden in die Zelle geschrieben; die Bezeichnung wird vom Label-Overlay angezeigt.",
+	"spreadsheeteditor-ac-default": "Standardwert (optional)",
+	"spreadsheeteditor-ac-default-placeholder": "(optional) Standardwert für leere Zellen…",
+	"spreadsheeteditor-ac-default-hint": "Füllt beim Hinzufügen leere Zellen des Bereichs mit diesem Wert.",
+	"spreadsheeteditor-ac-add": "Hinzufügen",
+	"spreadsheeteditor-ac-remove": "Entfernen",
+	"spreadsheeteditor-ac-done": "Fertig",
+	"spreadsheeteditor-ac-range-required": "Bereich und Abfrage sind erforderlich.",
+
+	"spreadsheeteditor-popup-search": "Suchen",
+	"spreadsheeteditor-popup-no-matches": "Keine Treffer.",
+	"spreadsheeteditor-popup-hint": "Tippen zum Suchen · Enter zum Leeren der Zelle · Esc zum Abbrechen",
+
+	"spreadsheeteditor-notify-editor-open": "Ein anderer Editor ist bereits geöffnet.\nBitte zuerst speichern und schließen.",
+	"spreadsheeteditor-notify-unsupported-file": "Nicht unterstützter Dateityp. Bitte .xlsx, .xls oder .csv hochladen",
+	"spreadsheeteditor-notify-no-workbook": "Keine aktive Arbeitsmappe zum Exportieren",
+	"spreadsheeteditor-notify-not-ready": "Editor nicht bereit",
+	"spreadsheeteditor-notify-imported": "$1 importiert",
+	"spreadsheeteditor-notify-save-error": "Fehler beim Speichern: $1",
+	"spreadsheeteditor-notify-import-failed": "Import fehlgeschlagen: $1",
+	"spreadsheeteditor-notify-export-failed": "Export fehlgeschlagen: $1"
+}

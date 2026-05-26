@@ -61,6 +61,10 @@ import SheetsFormulaEnUS from '@univerjs/sheets-formula/locale/en-US';
 import SheetsFormulaUIEnUS from '@univerjs/sheets-formula-ui/locale/en-US';
 import SheetsNumfmtUIEnUS from '@univerjs/sheets-numfmt-ui/locale/en-US';
 
+// German overlay (Univer does not ship a DE locale). Layered on top of
+// the English locale via deepMerge — missing keys fall through to EN.
+import deDEOverlay from './locales/de-DE.js';
+
 // Merge locale fragments into a single per-language bundle
 function deepMerge(...sources) {
 	const result = {};
@@ -88,9 +92,17 @@ const enUS = deepMerge(
 	SheetsNumfmtUIEnUS
 );
 
+// German = English baseline + our DE overlay on top.
+const deDE = deepMerge(enUS, deDEOverlay);
+
+// Univer's LocaleType enum doesn't include DE_DE — they only ship a fixed
+// set (EN_US / FR_FR / ZH_CN / …). The LocaleService just looks up the
+// locale by string key though, so we register our own identifier.
+const DE_DE = 'deDE';
+
 const locales = {
 	[LocaleType.EN_US]: enUS,
-	[LocaleType.DE_DE]: enUS  // Fallback to English until we wire up German fragments
+	[DE_DE]: deDE
 };
 
 // Export for UMD
@@ -102,6 +114,7 @@ export {
 	defaultTheme,
 	locales,
 	merge,
+	DE_DE,
 
 	// Plugins
 	UniverDocsPlugin,
