@@ -5,9 +5,9 @@
 /vendor
 /node_modules
 
-# Build artifacts (source files in modules/univer/ are tracked)
-/modules/univer/univer.umd.js
+# Build artifacts: univer.umd.js / univer.css are deliberately TRACKED in
+# this repo so the extension can be dropped into a wiki without running
+# `npm install` on the deploy host. Rebuild with `npm run build`.
 /modules/univer/univer.umd.js.map
-/modules/univer/univer.css
 *.log
 npm-debug.log*
